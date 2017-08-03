@@ -1,0 +1,84 @@
+#!/bin/sh
+# Start/stop the glassfish daemon.
+#
+### BEGIN INIT INFO
+# Provides:          glassfish
+# Required-Start:    $syslog $time
+# Required-Stop:     $syslog $time
+# Should-Start:      $network
+# Should-Stop:       $network
+# Default-Start:     3 4 5
+# Default-Stop:      0 1 2 6
+# Short-Description: Regular background program processing daemon
+# Description:       Glassfish init script for debian
+### END INIT INFO
+
+# Source function library.
+. /lib/lsb/init-functions
+
+prog=glassfish
+domain=domain1
+ASADMIN="/opt/glassfish4/bin/asadmin"
+START_OP="start-domain"
+STOP_OP="stop-domain"
+RESTART_OP="restart-domain"
+DOMAIN_DIR="/opt/glassfish4/glassfish/domains"
+DOMAIN_ARGS="--domaindir ${DOMAIN_DIR} ${domain}"
+lockfile=${LOCKFILE-/var/lock/glassfish}
+pidfile=${PIDFILE-/var/run/glassfish.pid}
+SLEEPMSEC=100000
+RETVAL=0
+
+start() {
+    log_daemon_msg "Starting $prog: "
+    start_daemon -p ${pidfile} ${ASADMIN} ${START_OP} ${DOMAIN_ARGS}
+    RETVAL=$?
+    echo
+    [ $RETVAL = 0 ] && touch ${lockfile} && cp ${DOMAIN_DIR}/${domain}/config/pid ${pidfile}
+    log_end_msg $RETVAL
+}
+
+stop() {
+    log_daemon_msg "Stopping $prog: "
+    ${ASADMIN} ${STOP_OP} ${DOMAIN_ARGS}
+    RETVAL=$?
+    echo
+    [ $RETVAL = 0 ] && rm -f ${lockfile} ${pidfile}
+    log_end_msg $RETVAL
+}
+
+restart() {
+    log_daemon_msg "Restarting $prog: "
+    ${ASADMIN} ${RESTART_OP} ${DOMAIN_ARGS}
+    RETVAL=$?
+    echo
+    log_end_msg $RETVAL
+}
+
+
+rh_status() {
+    status -p ${pidfile} ${prog}
+}
+
+# See how we were called.
+case "$1" in
+    start)
+        rh_status >/dev/null 2>&1 && exit 0
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        rh_status
+        RETVAL=$?
+        ;;
+    restart)
+        restart
+        ;;
+    *)
+        echo $"Usage: $prog {start|stop|restart|status}"
+        RETVAL=2
+esac
+
+exit $RETVAL
